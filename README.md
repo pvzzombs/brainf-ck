@@ -12,7 +12,7 @@ Compile `main.cpp` with any c++ compiler.
 5. Press Enter.  
 6. DONE!
 
-Copyright (c) 2019 Miles MJ V. Jamon
+Copyright (c) 2019 Miles MJ Jamon
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
