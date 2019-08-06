@@ -1,6 +1,6 @@
 # brainf-ck
 [![CodeFactor](https://www.codefactor.io/repository/github/pvzzombs/brainf-ck/badge)](https://www.codefactor.io/repository/github/pvzzombs/brainf-ck)  
-A brainf*ck compiler written in C++
+A brainf*ck interpreter written in C++
 
 ### How to use
 Compile `main.cpp` with any c++ compiler.  
