@@ -110,7 +110,7 @@ int main()
     system("color 0b");
     cout << "$ Enter File Path: ";
     getline(cin, fileName);
-    inFile.open(fileName);
+    inFile.open(fileName.c_str());
     if(!inFile){
         cout << "Error : Cannot Open File !" << endl;
         system("pause");
