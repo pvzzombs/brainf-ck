@@ -6,12 +6,9 @@ A brainf*ck interpreter written in C++
 Compile `main.cpp` with any c++ compiler.  
 
 **After Compiling**  
-1. Open the `.exe` file.  
-2. You should see the black window.  
-3. Inside the black window is a text that says `$ Enter File Path:`.  
-4. Enter the full path of the brainf-ck file.  
-5. Press Enter.  
-6. DONE!
+1. Open the executable via console/command prompt.  
+2. You should see the options and commands.  
+3. DONE!
 
 Copyright (c) 2019 Miles MJ Jamon
 
