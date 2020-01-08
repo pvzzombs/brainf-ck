@@ -2,11 +2,24 @@
 #include <cstdlib>
 #include <fstream>
 #include <vector>
+#include <string>
+#include <sstream>
 #include <windows.h>
 
 using namespace std;
 
-int memorySize = 30000;
+namespace patch{
+    template <typename T> std::string to_string(const T& n){
+        std::ostringstream stm;
+        stm << n;
+        return stm.str();
+    }
+}
+int maxCell = 255;
+int minCell = 0;
+int maxCellSize = 30000;
+int minCellSize = 10;
+int memorySize = maxCellSize;
 int memory[30000];
 int pnt = 0;
 int cnt = 0;
@@ -34,8 +47,19 @@ struct token {
     long argument;
 };
 vector <token> tokens;
+vector <int> poop;
 int pile;
 const char * mapping = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+string padStringZeroes(string Num, int padlength){
+    int length = int(Num.length());
+    while(length < padlength)
+    {
+        Num = "0" + Num;
+        length++;
+    }
+    return Num;
+}
 
 string decToRadix(int num, int radix) {
     string rem;
@@ -52,10 +76,14 @@ string decToRadix(int num, int radix) {
     return result;
 }
 
+void coloredMessage(string msg, WORD colorA, WORD colorB){
+    SetConsoleTextAttribute(hConsole, colorA);
+    cout << msg;
+    SetConsoleTextAttribute(hConsole, colorB);
+}
+
 void collectInput() {
-    SetConsoleTextAttribute(hConsole, 11);
-    cout << endl << "Input>";
-    SetConsoleTextAttribute(hConsole, 15);
+    coloredMessage("\nInput>", 11, 15);
     getline(cin, temp);
     if (temp[0] == '\n' || (temp[0] == '\r' && temp[1] == '\n')) {
         memory[pnt] = 0;
@@ -67,102 +95,107 @@ void collectInput() {
 void printCells(int n) {
     int i;
     int j = n + 10;
-    SetConsoleTextAttribute(hConsole, 14);
-    cout << "{Memory View} ";
     SetConsoleTextAttribute(hConsole, 10);
+    cout << "[Memory 0x";
+    cout << padStringZeroes(decToRadix(n, 16), 4) << "] ";
     for (i = n; i < j; i++) {
-        cout << "[ ";
         SetConsoleTextAttribute(hConsole, 14);
-        cout << decToRadix(memory[i], 16) << " ";
-        SetConsoleTextAttribute(hConsole, 12);
-        cout << i;
-        SetConsoleTextAttribute(hConsole, 10);
-        cout << "]";
+        cout << padStringZeroes(decToRadix(memory[i], 16), 2) << " ";
     }
     SetConsoleTextAttribute(hConsole, 15);
     cout << endl;
 }
 
-bool loopOk(vector < token > & n, long length) {
+bool loopOk(vector <token>& n, long length) {
     long i;
+    long sizeOfPoop;
     for (i = 0; i < length; i++) {
         if (n[i].type == '[') {
             pile+=1;
+            poop.push_back(1);
         } else if (n[i].type == ']') {
             pile-=1;
+            poop.pop_back();
         }
     }
-    if (pile == 0) {
+    sizeOfPoop = poop.size();
+    if (pile == 0 && sizeOfPoop == 0) {
         return true;
     } else {
         return false;
     }
 }
 
+void pushToken(char Char, long NOC, vector <token>& n){
+    token temp;
+    temp.type = Char;
+    temp.argument = NOC;
+    n.push_back(temp);
+}
+
+void switchToken(char& Token, char& Char, long& NOC, bool& skipToken){
+    switch (Token) {
+        case '>':
+            Char = '>';
+            NOC += 1;
+            break;
+        case '<':
+            Char = '<';
+            NOC += 1;
+            break;
+        case '[':
+            Char = '[';
+            break;
+        case ']':
+            Char = ']';
+            break;
+        case '.':
+            Char = '.';
+            NOC += 1;
+            break;
+        case ',':
+            Char = ',';
+            NOC += 1;
+            break;
+        case '+':
+            Char = '+';
+            NOC += 1;
+            break;
+        case '-':
+            Char = '-';
+            NOC += 1;
+            break;
+        default:
+            skipToken = true;
+    }
+}
+
 void parse(string program) {
     long length = program.length();
     long numberOfOccurence = 0;
-    token temp;
     char whatWeHave;
-    long i, pntr, cntr, luck;
+    bool skipToken;
+    long i, pntr, cntr;
     for (i = 0; i < length; i++) {
         if (i < length - 1) {
-            switch (program[i]) {
-                case '>':
-                    whatWeHave = '>';
-                    numberOfOccurence += 1;
-                    break;
-                case '<':
-                    whatWeHave = '<';
-                    numberOfOccurence += 1;
-                    break;
-                case '[':
-                    whatWeHave = '[';
-                    break;
-                case ']':
-                    whatWeHave = ']';
-                    break;
-                case '.':
-                    whatWeHave = '.';
-                    numberOfOccurence += 1;
-                    break;
-                case ',':
-                    whatWeHave = ',';
-                    numberOfOccurence += 1;
-                    break;
-                case '+':
-                    whatWeHave = '+';
-                    numberOfOccurence += 1;
-                    break;
-                case '-':
-                    whatWeHave = '-';
-                    numberOfOccurence += 1;
-                    break;
-                default:
-                    continue;
+            switchToken(program[i], whatWeHave, numberOfOccurence, skipToken);
+            if(skipToken){
+                skipToken = false;
+                continue;
             }
             if (whatWeHave == '[' || whatWeHave == ']') {
-                temp.type = whatWeHave;
-                temp.argument = 0;
-                tokens.push_back(temp);
+                pushToken(whatWeHave, 0, tokens);
                 numberOfOccurence = 0;
             } else if (whatWeHave != program[i + 1]) {
-                temp.type = whatWeHave;
-                temp.argument = numberOfOccurence;
-                tokens.push_back(temp);
+                pushToken(whatWeHave, numberOfOccurence, tokens);
                 numberOfOccurence = 0;
             }
         } else {
             if (numberOfOccurence == 0) {
-                temp.type = program[i];
-                temp.argument = 1;
-                tokens.push_back(temp);
+                pushToken(program[i], 1, tokens);
                 numberOfOccurence = 0;
             } else {
-                numberOfOccurence += 1;
-                temp.type = whatWeHave;
-                temp.argument = numberOfOccurence;
-                tokens.push_back(temp);
+                pushToken(whatWeHave, (numberOfOccurence+1), tokens);
                 numberOfOccurence = 0;
             }
         }
@@ -171,9 +204,7 @@ void parse(string program) {
     //now parse the loop
     long tokensLength = tokens.size();
     if (!loopOk(tokens, tokensLength)) {
-        SetConsoleTextAttribute(hConsole, 10);
-        cout << "Details: Loop brackets are not pair! " << endl;
-        SetConsoleTextAttribute(hConsole, 15);
+        coloredMessage("Details: Loop brackets are not in pair! \n", 10, 15);
         errorFlag = true;
     }
     if (!errorFlag) {
@@ -190,9 +221,8 @@ void parse(string program) {
                     }
 
                     if (cntr == 0) {
-                        luck = pntr;
-                        tokens[i].argument = luck;
-                        tokens[luck].argument = i;
+                        tokens[i].argument = pntr;
+                        tokens[pntr].argument = i;
                         break;
                     }
                     pntr += 1;
@@ -203,17 +233,15 @@ void parse(string program) {
     }
 
     if (errorFlag) {
-        SetConsoleTextAttribute(hConsole, 12);
-        cout << "Parse error! " << endl;
-        SetConsoleTextAttribute(hConsole, 15);
+        coloredMessage("Parse error! \n", 12, 15);
     } else {
-        SetConsoleTextAttribute(hConsole, 10);
-        cout << "Parsed successfully! " << endl;
-        SetConsoleTextAttribute(hConsole, 15);
+        coloredMessage("Parsed successfully! \n", 10, 15);
     }
 }
 
 void command(char Token, long Arg) {
+    string msg;
+    //char* apnd;
     long i;
     switch (Token) {
         case '>':
@@ -223,10 +251,9 @@ void command(char Token, long Arg) {
                     if (wrappedFlag) {
                         pnt = 0;
                     } else {
-                        SetConsoleTextAttribute(hConsole, 12);
-                        cout << endl << "Error: Unexpected overflow of memory." << endl;
-                        cout << "   at compile > tmp > token " << cnt << endl;
-                        SetConsoleTextAttribute(hConsole, 15);
+                        msg = "\nError: Unexpected overflow of memory.\n   at compile.tmp.token ";
+                        msg.append(patch::to_string(cnt));
+                        coloredMessage(msg, 12, 15);
                         errorFlag = true;
                         break;
                     }
@@ -240,10 +267,9 @@ void command(char Token, long Arg) {
                     if (wrappedFlag) {
                         pnt = memorySize - 1;
                     } else {
-                        SetConsoleTextAttribute(hConsole, 12);
-                        cout << endl << "Error: Unexpected underflow of memory." << endl;
-                        cout << "   at compile > tmp > token " << cnt << endl;
-                        SetConsoleTextAttribute(hConsole, 15);
+                        msg = "\nError: Unexpected underflow of memory.\n   at compile.tmp.token ";
+                        msg.append(patch::to_string(cnt));
+                        coloredMessage(msg, 12, 15);
                         errorFlag = true;
                         break;
                     }
@@ -253,16 +279,16 @@ void command(char Token, long Arg) {
         case '+':
             for (i = 0; i < Arg; i++) {
                 ++memory[pnt];
-                if (memory[pnt] > 255) {
-                    memory[pnt] = 0;
+                if (memory[pnt] > maxCell) {
+                    memory[pnt] = minCell;
                 }
             }
             break;
         case '-':
             for (i = 0; i < Arg; i++) {
                 --memory[pnt];
-                if (memory[pnt] < 0) {
-                    memory[pnt] = 255;
+                if (memory[pnt] < minCell) {
+                    memory[pnt] = maxCell;
                 }
             }
 
@@ -279,13 +305,11 @@ void command(char Token, long Arg) {
             }
             break;
         case '[':
-            //leftBracket();
             if (memory[pnt] == 0) {
                 cnt = Arg;
             }
             break;
         case ']':
-            //rightBracket();
             if (memory[pnt] > 0) {
                 cnt = Arg;
             }
@@ -336,50 +360,81 @@ void compile(bool isInfinite) {
 
 void showHelp(string exeName) {
     cout << "Current path of brainfuck compiler: ";
-    SetConsoleTextAttribute(hConsole, 11);
-    cout << exeName << endl;
-    SetConsoleTextAttribute(hConsole, 15);
+    coloredMessage(exeName + "\n", 11, 15);
     cout << "Usage: ";
-    SetConsoleTextAttribute(hConsole, 11);
-    cout << "[path of compiler] ";
-    SetConsoleTextAttribute(hConsole, 10);
+    coloredMessage("[path of compiler] ", 11, 10);
     cout << "file ";
-    SetConsoleTextAttribute(hConsole, 14);
-    cout << "[Commands] " << endl;
-    SetConsoleTextAttribute(hConsole, 15);
+    coloredMessage("[Commands] \n", 14, 15);
     cout << "   or  ";
-    SetConsoleTextAttribute(hConsole, 11);
-    cout << "[path of compiler] ";
-    SetConsoleTextAttribute(hConsole, 14);
+    coloredMessage("[path of compiler] ", 11, 14);
     cout << "[Options]" << endl << endl;
     /** COMMANDS **/
     cout << "Commands: " << endl;
     SetConsoleTextAttribute(hConsole, 15);
-    cout << "  -d    --debug        Logs memory tape to the console" << endl;
-    cout << "  -i    --infinite     Infinite iterations            " << endl;
-    cout << "  -w    --wrapped      Memory cells are wrapped/joined" << endl;
+    cout << "  -d    --debug        Logs memory tape to the console  " << endl;
+    cout << "  -i    --infinite     Infinite iterations              " << endl;
+    cout << "  -m    --max          Set the maximum range of the cell" << endl;
+    cout << "  -n    --min          Set the minimum range of the cell" << endl;
+    cout << "  -w    --wrapped      Memory cells are wrapped/joined  " << endl;
+    cout << "  -s    --size         Set the size of the memory tape  " << endl;
     /** OPTIONS **/
-    SetConsoleTextAttribute(hConsole, 14);
-    cout << "Options: " << endl;
-    SetConsoleTextAttribute(hConsole, 15);
-    cout << "  -h    --help         See this help option           " << endl;
+    coloredMessage("Options: \n", 14, 15);
+    cout << "  -h    --help         See this help option             " << endl;
+    coloredMessage("Exammple \n", 14, 15);
+    cout << "  main file.b --infinite --wrapped --size 100 -m 65535  " << endl;
+    cout << "  - sets the compiler w/ infinite tape & iterations, w/ cell size of 65535 and 100 real cells" << endl;
+    cout << "  main file.b --debug                                   " << endl;
+    cout << "  - sets the compiler in debug mode                 " << endl;
 
 }
 
 int main(int argc, char * argv[]) {
     SetConsoleTextAttribute(hConsole, 15);
     string nameExe = argv[0];
+
+    bool waitingForOption = false;
+    char waiterOfOption;
     if (argc < 2) {
         showHelp(nameExe);
     } else {
         if (argc > 2) {
             for (int i = 2; i < argc; i++) {
+                if(waitingForOption){
+                    waitingForOption = false;
+                    switch (waiterOfOption){
+                    case 's' :
+                        memorySize = atoi(argv[i]);
+                        if(memorySize < minCellSize || memorySize > maxCellSize){
+                            memorySize = maxCellSize;
+                        }
+                        break;
+                    case 'm' :
+                        maxCell = atoi(argv[i]);
+                        if(maxCell <= minCell){
+                            maxCell = 255;
+                        }
+                    case 'n' :
+                        minCell = atoi(argv[i]);
+                        if(minCell >= maxCell){
+                            minCell = 0;
+                        }
+                    }
+                }
                 if (0 == strcmp(argv[i], "-d") || 0 == strcmp(argv[i], "--debug")) {
                     debugFlag = true;
                 } else if (0 == strcmp(argv[i], "-i") || 0 == strcmp(argv[i], "--infinite")) {
                     allowInfinite = true;
                 } else if (0 == strcmp(argv[i], "-w") || 0 == strcmp(argv[i], "--wrapped")) {
                     wrappedFlag = true;
+                } else if (0 == strcmp(argv[i], "-s") || 0 == strcmp(argv[i], "--size")) {
+                    waitingForOption = true;
+                    waiterOfOption = 's';
+                } else if (0 == strcmp(argv[i], "-m") || 0 == strcmp(argv[i], "--max")) {
+                    waitingForOption = true;
+                    waiterOfOption = 'm';
+                } else if (0 == strcmp(argv[i], "-n") || 0 == strcmp(argv[i], "--min")) {
+                    waitingForOption = true;
+                    waiterOfOption = 'n';
                 }
             }
         }
@@ -388,9 +443,7 @@ int main(int argc, char * argv[]) {
         }else{
             inFile.open(argv[1]);
             if (!inFile) {
-                SetConsoleTextAttribute(hConsole, 12);
-                cout << "Error: Unknown Command or File! " << endl;
-                SetConsoleTextAttribute(hConsole, 15);
+                coloredMessage("Error: Unknown Command or File! \n", 12, 15);
             } else {
                 while (getline(inFile, str)) {
                     program += str;
